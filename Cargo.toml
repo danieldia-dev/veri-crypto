@@ -1,0 +1,15 @@
+[package]
+name = "veri-rust-crypto"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# The hax library, required for all the macros
+# See: hax-lib-api.md
+hax-lib = { version = "*" }
+
+[package.metadata.hax]
+# Configures the `cargo hax into fstar` command
+# See: cli-backends.md
+into.fstar.output_dir = "proofs/fstar/extraction"
+into.fstar.z3rlimit = 100
