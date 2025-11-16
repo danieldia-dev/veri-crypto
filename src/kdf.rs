@@ -9,7 +9,6 @@ use crate::sponge::Sponge;
 /// Note: This is a simplified KDF. A production-ready KDF
 /// like HKDF is more complex, but this serves the project goal.
 //
-// We can add contracts from `hax-lib-api.md`.
 // #[hax::ensures(|result| result.len() == output_len)]
 pub fn sponge_kdf(key: &[u8], info: &[u8], output_len: usize) -> Vec<u8> {
     let mut sponge = Sponge::new_sha3_256();
