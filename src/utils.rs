@@ -1,5 +1,5 @@
 use crate::core::KeccakState;
-use hax_lib as hax;
+// use hax_lib as hax; // Uncomment when using hax for verification
 
 /// Converts a 136-byte (1088-bit) block into the Keccak state.
 ///
@@ -16,12 +16,21 @@ use hax_lib as hax;
 //    result == mathematical_spec::bytes_to_state(input)
 // )]
 pub fn bytes_to_state_xor(state: &mut KeccakState, input: &[u8], rate_in_bytes: usize) {
-    // --- Implementation Skeleton ---
-    // 1. Iterate over the `rate_in_bytes`.
-    // 2. XOR `input` bytes into the `state` words
-    //    (handling little-endian conversion).
-    // --- End Implementation ---
-    unimplemented!();
+    // XOR input bytes into the state words
+    // The state is organized as 25 u64 words, with the rate portion
+    // being the first rate_in_bytes/8 words (plus partial word if needed)
+
+    let len = input.len().min(rate_in_bytes);
+
+    for i in 0..len {
+        let word_idx = i / 8;
+        let byte_idx = i % 8;
+
+        // XOR the byte into the appropriate position in the word
+        // using little-endian byte order
+        let byte_val = input[i] as u64;
+        state[word_idx] ^= byte_val << (byte_idx * 8);
+    }
 }
 
 /// Converts the Keccak state back into a 136-byte block.
@@ -30,10 +39,17 @@ pub fn bytes_to_state_xor(state: &mut KeccakState, input: &[u8], rate_in_bytes: 
 // #[hax::opaque]
 // #[hax::ensures(/* ... */)]
 pub fn state_to_bytes(state: &KeccakState, output: &mut [u8], rate_in_bytes: usize) {
-    // --- Implementation Skeleton ---
-    // 1. Iterate over `rate_in_bytes`.
-    // 2. Copy bytes from `state` words to `output`
-    //    (handling little-endian conversion).
-    // --- End Implementation ---
-    unimplemented!();
+    // Copy bytes from state words to output
+    // using little-endian byte order
+
+    let len = output.len().min(rate_in_bytes);
+
+    for i in 0..len {
+        let word_idx = i / 8;
+        let byte_idx = i % 8;
+
+        // Extract the byte from the appropriate position in the word
+        // using little-endian byte order
+        output[i] = (state[word_idx] >> (byte_idx * 8)) as u8;
+    }
 }

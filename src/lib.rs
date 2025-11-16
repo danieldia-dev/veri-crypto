@@ -23,3 +23,7 @@ mod utils;
 // Re-export the main, public-facing functions.
 pub use hash::sha3_256;
 pub use kdf::sponge_kdf;
+
+// Test module
+#[cfg(test)]
+mod tests;
