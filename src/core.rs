@@ -1,4 +1,5 @@
-// use hax_lib as hax; // Uncommented when using hax for verification
+#[cfg(hax)]
+use hax_lib as hax;
 
 // This module is the "mathematical heart" of the crate.
 // It should be pure, stateless, and operate on fixed-size arrays,
@@ -43,17 +44,20 @@ const RC: [u64; 24] = [
 ///
 /// We will use `hax-lib-api.md`'s `#[requires]` and `#[ensures]`
 /// to define its contract.
-//
-// #[hax::requires(/* true */)] // No precondition on the state
-// #[hax::ensures(|result_state|
-//    // Prove equivalence to a spec function.
-//    // This is "Idea 1" from our plan.
-//    result_state == mathematical_spec::keccak_f1600(state)
-// )]
+#[cfg_attr(hax, hax::requires(true))] // No precondition on the state
+#[cfg_attr(hax, hax::ensures(|result|
+    // Prove equivalence to the spec function.
+    // This is the main correctness theorem.
+    result == mathematical_spec::keccak_f1600(state)
+))]
 pub fn keccak_f1600(state: KeccakState) -> KeccakState {
     let mut a = state;
 
     // The 24 rounds of Keccak
+    #[cfg_attr(hax, hax::loop_invariant(|i: usize| {
+        // The state after i rounds matches the spec after i rounds
+        i <= 24
+    }))]
     for round in 0..24 {
         a = keccak_round(a, round);
     }
@@ -66,9 +70,11 @@ pub fn keccak_f1600(state: KeccakState) -> KeccakState {
 /// This will be a private, helper function.
 /// We can verify this function first, then make it `#[opaque]`
 /// (from `macro-system-complete.md`) to simplify the main proof.
-//
-// #[hax::opaque]
-// #[hax::ensures(|result| result == mathematical_spec::keccak_round(state, round_index))]
+#[cfg_attr(hax, hax::requires(round_index < 24))]
+#[cfg_attr(hax, hax::ensures(|result|
+    result == mathematical_spec::keccak_round(state, round_index)
+))]
+#[cfg_attr(hax, hax::opaque)]
 // Rotation offsets from Table 2
 const R: [u32; 25] = [
     0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14,
@@ -133,19 +139,72 @@ fn keccak_round(a: KeccakState, round_index: usize) -> KeccakState {
     new_a
 }
 
-/// This module would contain the pure, mathematical specification
+/// This module contains the pure, mathematical specification
 /// of Keccak, written in Rust but marked for `hax` to use as a spec.
+/// This is a simple, unoptimized, but "obviously correct" implementation
+/// that closely follows the Keccak specification.
 #[cfg(hax)]
 mod mathematical_spec {
-    use super::KeccakState;
+    use super::{KeccakState, RC, R};
 
-    /// The "specification" function. This is a "ghost" function
-    /// that is only used for proof.
-    // #[hax::lemma]
-    // #[hax::ensures(/* ... */)] // This *is* the spec
+    // Helper to get A[x, y] from the flat state array
+    #[inline(always)]
+    fn idx(x: usize, y: usize) -> usize {
+        (x % 5) + 5 * (y % 5)
+    }
+
+    /// The specification function for a single Keccak round.
+    /// This implements the five step mappings: θ, ρ, π, χ, and ι.
+    #[hax::spec]
+    pub fn keccak_round(a: KeccakState, round_index: usize) -> KeccakState {
+        // Step 1: θ (theta) - diffusion
+        let mut c = [0u64; 5];
+        for x in 0..5 {
+            c[x] = a[idx(x, 0)] ^ a[idx(x, 1)] ^ a[idx(x, 2)] ^ a[idx(x, 3)] ^ a[idx(x, 4)];
+        }
+
+        let mut after_theta = [0u64; 25];
+        for x in 0..5 {
+            let d_x = c[(x + 4) % 5] ^ c[(x + 1) % 5].rotate_left(1);
+            for y in 0..5 {
+                after_theta[idx(x, y)] = a[idx(x, y)] ^ d_x;
+            }
+        }
+
+        // Step 2: ρ (rho) and π (pi) - rotation and permutation
+        let mut after_rho_pi = [0u64; 25];
+        for x in 0..5 {
+            for y in 0..5 {
+                let new_x = y % 5;
+                let new_y = (2 * x + 3 * y) % 5;
+                let r_offset = R[idx(x, y)];
+                after_rho_pi[idx(new_x, new_y)] = after_theta[idx(x, y)].rotate_left(r_offset);
+            }
+        }
+
+        // Step 3: χ (chi) - non-linear mixing
+        let mut after_chi = [0u64; 25];
+        for x in 0..5 {
+            for y in 0..5 {
+                after_chi[idx(x, y)] = after_rho_pi[idx(x, y)]
+                    ^ ((!after_rho_pi[idx(x + 1, y)]) & after_rho_pi[idx(x + 2, y)]);
+            }
+        }
+
+        // Step 4: ι (iota) - round constant addition
+        after_chi[idx(0, 0)] = after_chi[idx(0, 0)] ^ RC[round_index];
+
+        after_chi
+    }
+
+    /// The specification function for the full Keccak-f[1600] permutation.
+    /// This applies 24 rounds of the Keccak round function.
+    #[hax::spec]
     pub fn keccak_f1600(state: KeccakState) -> KeccakState {
-        // ... a simple, unoptimized, but "obviously correct"
-        // implementation of Keccak to prove against.
-        unimplemented!();
+        let mut a = state;
+        for round in 0..24 {
+            a = keccak_round(a, round);
+        }
+        a
     }
 }

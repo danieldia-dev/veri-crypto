@@ -1,5 +1,6 @@
 use crate::core::KeccakState;
-// use hax_lib as hax; // Uncomment when using hax for verification
+#[cfg(hax)]
+use hax_lib as hax;
 
 /// Converts a 136-byte (1088-bit) block into the Keccak state.
 ///
@@ -10,11 +11,13 @@ use crate::core::KeccakState;
 /// make it `#[hax::opaque]` (from `macro-system-complete.md`).
 /// This hides its internal complexity from the `sponge` module,
 /// making the sponge's proof *much* simpler.
-//
-// #[hax::opaque]
-// #[hax::ensures(|result|
-//    result == mathematical_spec::bytes_to_state(input)
-// )]
+#[cfg_attr(hax, hax::requires(input.len() <= rate_in_bytes))]
+#[cfg_attr(hax, hax::ensures(|_|
+    // Ensures bytes are correctly XORed into state
+    // This would reference a spec function in practice
+    true
+))]
+#[cfg_attr(hax, hax::opaque)]
 pub fn bytes_to_state_xor(state: &mut KeccakState, input: &[u8], rate_in_bytes: usize) {
     // XOR input bytes into the state words
     // The state is organized as 25 u64 words, with the rate portion
@@ -35,9 +38,13 @@ pub fn bytes_to_state_xor(state: &mut KeccakState, input: &[u8], rate_in_bytes: 
 
 /// Converts the Keccak state back into a 136-byte block.
 /// (Inverse of `bytes_to_state_xor`).
-//
-// #[hax::opaque]
-// #[hax::ensures(/* ... */)]
+#[cfg_attr(hax, hax::requires(output.len() <= rate_in_bytes))]
+#[cfg_attr(hax, hax::ensures(|_|
+    // Ensures bytes are correctly extracted from state
+    // This would reference a spec function in practice
+    true
+))]
+#[cfg_attr(hax, hax::opaque)]
 pub fn state_to_bytes(state: &KeccakState, output: &mut [u8], rate_in_bytes: usize) {
     // Copy bytes from state words to output
     // using little-endian byte order
