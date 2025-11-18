@@ -1,0 +1,131 @@
+[package]
+name = "veri-crypto"
+version = "0.1.0"
+
+# Backend configuration
+[backends]
+# Default backend for verification
+default = "fstar"
+
+# Enable multiple backends
+enabled = ["fstar", "lean", "coq"]
+
+# F* backend configuration
+[fstar]
+# Generate interface files (.fsti)
+interfaces = true
+
+# Modules to generate interfaces for
+interface_modules = ["Core", "Sponge", "Utils"]
+
+# F* specific options
+options = [
+    "--fuel", "8",
+    "--ifuel", "2",
+    "--z3rlimit", "100"
+]
+
+# Output directory
+output_dir = "proofs/fstar"
+
+# Lean 4 backend configuration
+[lean]
+# Generate lakefile for Lean 4
+lakefile = true
+
+# Ensure panic-freedom proofs
+panic_free = true
+
+# Lean specific options
+options = [
+    "--max-heartbeats", "100000"
+]
+
+# Output directory
+output_dir = "proofs/lean"
+
+# Coq backend configuration
+[coq]
+# Generate _CoqProject file
+coq_project = true
+
+# Output directory
+output_dir = "proofs/coq"
+
+# General hax options
+[options]
+# Verbosity level (0-3)
+verbose = 1
+
+# Extract type aliases
+extract_type_aliases = true
+
+# Extract documentation comments
+extract_docs = true
+
+# Include specification functions
+include_specs = true
+
+# Exclude patterns (files/modules to skip)
+[exclude]
+patterns = [
+    "tests/*",
+    "examples/*",
+    "target/*"
+]
+
+# Module-specific configuration
+[modules.core]
+# Core module is the primary verification target
+priority = "high"
+backend = "fstar"
+options = ["--admit_smt_queries", "false"]
+
+[modules.sponge]
+# Sponge requires state machine verification
+priority = "high"
+backend = "fstar"
+options = ["--detail_errors"]
+
+[modules.utils]
+# Utils are marked as opaque after verification
+priority = "medium"
+backend = "fstar"
+opaque_after_verification = true
+
+# Proof obligations
+[proofs]
+# List of theorems to prove
+targets = [
+    "core::keccak_f1600_correctness",
+    "core::round_function_correctness",
+    "sponge::invariant_preservation",
+    "sponge::absorption_determinism",
+    "utils::byte_conversion_correctness"
+]
+
+# Timeout for each proof (seconds)
+timeout = 300
+
+# Specification extraction
+[spec]
+# Extract all #[spec] functions
+extract_all = true
+
+# Include lemmas
+include_lemmas = true
+
+# Include invariants
+include_invariants = true
+
+# Debugging options
+[debug]
+# Save intermediate representations
+save_thir = true
+save_mir = false
+
+# Print extraction steps
+print_extraction = false
+
+# Keep generated files even on failure
+keep_on_failure = true
