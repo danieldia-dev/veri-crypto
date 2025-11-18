@@ -1,3 +1,6 @@
+// Feature flag needed for hax loop invariants
+#![cfg_attr(hax, feature(stmt_expr_attributes))]
+
 /// Veri-Rust-Crypto: A modular, formally verified cryptographic crate.
 ///
 /// This crate provides cryptographic primitives built on a verified
@@ -7,6 +10,7 @@
 /// 1. `core`: Prove functional correctness of the permutation.
 /// 2. `sponge`: Prove correctness of the stateful sponge construction.
 /// 3. `hash`/`kdf`: Compose the verified sponge into high-level APIs.
+
 // The core permutation, the primary verification target.
 pub mod core;
 

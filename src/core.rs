@@ -36,6 +36,17 @@ const RC: [u64; 24] = [
     0x8000000080008008,
 ];
 
+// Rotation offsets from Table 2
+const R: [u32; 25] = [
+    0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14,
+];
+
+// Helper to get A[x, y] from the flat state array
+#[inline(always)]
+fn idx(x: usize, y: usize) -> usize {
+    (x % 5) + 5 * (y % 5)
+}
+
 /// Performs one full Keccak-f[1600] permutation on the given state.
 ///
 /// This is the primary verification target. We will prove that this
@@ -75,17 +86,6 @@ pub fn keccak_f1600(state: KeccakState) -> KeccakState {
     result == mathematical_spec::keccak_round(state, round_index)
 ))]
 #[cfg_attr(hax, hax::opaque)]
-// Rotation offsets from Table 2
-const R: [u32; 25] = [
-    0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14,
-];
-
-// Helper to get A[x, y] from the flat state array
-#[inline(always)]
-fn idx(x: usize, y: usize) -> usize {
-    (x % 5) + 5 * (y % 5)
-}
-
 fn keccak_round(a: KeccakState, round_index: usize) -> KeccakState {
     // We will need two temporary arrays:
     let mut c = [0u64; 5]; // For theta
@@ -145,17 +145,11 @@ fn keccak_round(a: KeccakState, round_index: usize) -> KeccakState {
 /// that closely follows the Keccak specification.
 #[cfg(hax)]
 mod mathematical_spec {
-    use super::{KeccakState, RC, R};
-
-    // Helper to get A[x, y] from the flat state array
-    #[inline(always)]
-    fn idx(x: usize, y: usize) -> usize {
-        (x % 5) + 5 * (y % 5)
-    }
+    use super::{KeccakState, RC, R, idx};
 
     /// The specification function for a single Keccak round.
     /// This implements the five step mappings: θ, ρ, π, χ, and ι.
-    #[hax::spec]
+    #[cfg_attr(hax, hax_lib::requires(round_index < 24))]
     pub fn keccak_round(a: KeccakState, round_index: usize) -> KeccakState {
         // Step 1: θ (theta) - diffusion
         let mut c = [0u64; 5];
@@ -199,7 +193,6 @@ mod mathematical_spec {
 
     /// The specification function for the full Keccak-f[1600] permutation.
     /// This applies 24 rounds of the Keccak round function.
-    #[hax::spec]
     pub fn keccak_f1600(state: KeccakState) -> KeccakState {
         let mut a = state;
         for round in 0..24 {
